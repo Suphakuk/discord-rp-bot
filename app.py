@@ -31,7 +31,7 @@ class StaffApprovalView(discord.ui.View):
 
     @discord.ui.button(label="✅ อนุมัติ", style=discord.ButtonStyle.success, custom_id="staff_approve_btn")
     async def approve_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # ป้องกันไม่ให้นักเรียนธรรมดากดปุ่มนี้ได้ (เช็คจากสิทธิ์การจัดการยศ)
+        # ป้องกันไม่ให้นักเรียนธรรมดากดปุ่มนี้ได้
         if not interaction.user.guild_permissions.manage_roles:
             return await interaction.response.send_message("❌ เฉพาะประธานหรือกรรมการเท่านั้นที่กดอนุมัติได้ครับ", ephemeral=True)
 
@@ -85,13 +85,19 @@ class StaffApprovalView(discord.ui.View):
             for child in self.children:
                 child.disabled = True
             
-            # 4. อัปเดตหน้าตาใบสมัครว่า "ผ่านแล้ว" และโชว์ชื่อกรรมการ
+            # 4. อัปเดตหน้าตาใบสมัคร
             embed.color = discord.Color.green()
             embed.title = "✅ อนุมัติเข้าชมรมเรียบร้อยแล้ว"
             embed.add_field(name="ผู้อนุมัติ", value=interaction.user.mention, inline=False)
             
             await interaction.message.edit(embed=embed, view=self)
             await interaction.response.send_message(f"✅ คุณได้อนุมัติให้ {member.mention} เข้าชมรมแล้ว!", ephemeral=True)
+            
+            # (แถม) ส่ง DM แจ้งเตือนเมื่อผ่านการอนุมัติ
+            try:
+                await member.send(f"🎉 **ยินดีต้อนรับ!** ใบสมัครเข้าชมรมของคุณได้รับการอนุมัติโดย {interaction.user.mention} เรียบร้อยแล้วครับ สามารถเข้าไปพูดคุยในเซิร์ฟเวอร์ได้เลย!")
+            except discord.Forbidden:
+                pass # ถ้าผู้เล่นปิด DM ไว้ ให้ปล่อยผ่านไปไม่ต้องเออเร่อ
 
         except Exception as e:
             await interaction.response.send_message(f"❌ เกิดข้อผิดพลาดของบอท: {e}", ephemeral=True)
@@ -102,6 +108,16 @@ class StaffApprovalView(discord.ui.View):
             return await interaction.response.send_message("❌ เฉพาะประธานหรือกรรมการเท่านั้นที่กดได้ครับ", ephemeral=True)
 
         embed = interaction.message.embeds[0]
+        
+        # แกะข้อมูล ID ผู้สมัครออกมา (เพิ่มใหม่✨)
+        user_mention = embed.fields[0].value
+        user_id_match = re.search(r'\d+', user_mention)
+        if not user_id_match:
+            return await interaction.response.send_message("❌ เกิดข้อผิดพลาด: ดึงข้อมูล ID ไม่สำเร็จ", ephemeral=True)
+        
+        user_id = int(user_id_match.group())
+        guild = interaction.guild
+        member = guild.get_member(user_id)
         
         # ล็อคปุ่ม
         for child in self.children:
@@ -114,6 +130,13 @@ class StaffApprovalView(discord.ui.View):
         
         await interaction.message.edit(embed=embed, view=self)
         await interaction.response.send_message("❌ บันทึกการปฏิเสธเรียบร้อยแล้ว", ephemeral=True)
+
+        # ส่งข้อความ DM ไปหาผู้สมัคร (เพิ่มใหม่✨)
+        if member:
+            try:
+                await member.send(f"❌ **แจ้งเตือนจากเซิร์ฟเวอร์:** ใบสมัครเข้าชมรมของคุณถูกปฏิเสธโดย {interaction.user.mention} ครับ\nหากมีข้อสงสัยหรือต้องการแก้ไขข้อมูล สามารถติดต่อสอบถามสตาฟฟ์ได้เลยครับ")
+            except discord.Forbidden:
+                pass # ถ้าผู้เล่นปิด DM ไว้ ให้ปล่อยผ่านไป
 
 
 # ==========================================
