@@ -23,21 +23,66 @@ ROLE_SLYTHERIN_ID = 1516502299437043742
 LOG_CHANNEL_ID = 1516538668393824376  # ⬅️ เปลี่ยนเลขห้องตรงนี้
 
 # ==========================================
+# 📋 หน้าต่างสำหรับให้กรรมการกรอกเหตุผลที่ปฏิเสธ
+# ==========================================
+class RejectModal(discord.ui.Modal, title='ระบุเหตุผลที่ปฏิเสธ'):
+    reason_input = discord.ui.TextInput(
+        label='เหตุผล (แจ้งให้นักเรียนทราบ)',
+        style=discord.TextStyle.long, # กล่องข้อความแบบยาว
+        placeholder='เช่น กรอกเลขจดหมายผิด, ลิงก์รูปภาพใช้งานไม่ได้...',
+        required=True
+    )
+
+    def __init__(self, user_id: int, original_message: discord.Message, view: discord.ui.View):
+        super().__init__()
+        self.user_id = user_id
+        self.original_message = original_message
+        self.original_view = view
+
+    async def on_submit(self, interaction: discord.Interaction):
+        reason = self.reason_input.value
+        guild = interaction.guild
+        member = guild.get_member(self.user_id)
+        
+        embed = self.original_message.embeds[0]
+        
+        # 1. ล็อคปุ่มเดิมทั้งหมดไม่ให้กดซ้ำ
+        for child in self.original_view.children:
+            child.disabled = True
+            
+        # 2. เปลี่ยนสีใบสมัครเป็นสีแดง และใส่เหตุผลลงไปโชว์ในห้อง Log
+        embed.color = discord.Color.red()
+        embed.title = "❌ ใบสมัครถูกปฏิเสธ"
+        embed.add_field(name="ผู้ปฏิเสธ", value=interaction.user.mention, inline=False)
+        embed.add_field(name="เหตุผล", value=reason, inline=False)
+        
+        # 3. อัปเดตข้อความทันที (แก้ปัญหาปุ่มค้าง/กดไม่ได้)
+        await interaction.response.edit_message(embed=embed, view=self.original_view)
+
+        # 4. ส่ง DM ไปแจ้งนักเรียนพร้อมเหตุผล
+        if member:
+            try:
+                await member.send(f"❌ **แจ้งเตือนจากเซิร์ฟเวอร์:** ใบสมัครเข้าชมรมของคุณถูกปฏิเสธโดย {interaction.user.mention} ครับ\n**เหตุผล:** {reason}\n\nหากแก้ไขเรียบร้อยแล้ว สามารถกดลงทะเบียนส่งใบสมัครใหม่ได้เลยครับ!")
+            except discord.Forbidden:
+                pass
+
+
+# ==========================================
 # 🛠️ ระบบปุ่มสำหรับให้กรรมการกดอนุมัติ/ปฏิเสธ
 # ==========================================
 class StaffApprovalView(discord.ui.View):
     def __init__(self):
-        super().__init__(timeout=None) # ตั้งค่าให้ปุ่มอยู่ถาวร
+        super().__init__(timeout=None) 
 
     @discord.ui.button(label="✅ อนุมัติ", style=discord.ButtonStyle.success, custom_id="staff_approve_btn")
     async def approve_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # ป้องกันไม่ให้นักเรียนธรรมดากดปุ่มนี้ได้
+        # เช็คสิทธิ์
         if not interaction.user.guild_permissions.manage_roles:
             return await interaction.response.send_message("❌ เฉพาะประธานหรือกรรมการเท่านั้นที่กดอนุมัติได้ครับ", ephemeral=True)
 
         embed = interaction.message.embeds[0]
         
-        # แกะข้อมูล ID ผู้สมัครออกมาจากกล่องข้อความ
+        # แกะข้อมูล ID ผู้สมัครออกมา
         user_mention = embed.fields[0].value
         user_id_match = re.search(r'\d+', user_mention)
         if not user_id_match:
@@ -51,24 +96,15 @@ class StaffApprovalView(discord.ui.View):
         member = guild.get_member(user_id)
         
         if not member:
-            return await interaction.response.send_message("❌ ไม่พบผู้ใช้คนนี้ในเซิร์ฟเวอร์แล้ว (อาจจะกดยกเลิกหรือออกไปแล้ว)", ephemeral=True)
+            return await interaction.response.send_message("❌ ไม่พบผู้ใช้คนนี้ในเซิร์ฟเวอร์แล้ว", ephemeral=True)
 
-        # เตรียมแพ็คเกจยศ
         role_member = guild.get_role(ROLE_MEMBER_ID)
         roles_to_add = [role_member] if role_member else []
         
-        if "hufflepuff" in house_name:
-            role = guild.get_role(ROLE_HUFFLEPUFF_ID)
-            if role: roles_to_add.append(role)
-        elif "ravenclaw" in house_name:
-            role = guild.get_role(ROLE_RAVENCLAW_ID)
-            if role: roles_to_add.append(role)
-        elif "gryffindor" in house_name:
-            role = guild.get_role(ROLE_GRYFFINDOR_ID)
-            if role: roles_to_add.append(role)
-        elif "slytherin" in house_name:
-            role = guild.get_role(ROLE_SLYTHERIN_ID)
-            if role: roles_to_add.append(role)
+        if "hufflepuff" in house_name: role = guild.get_role(ROLE_HUFFLEPUFF_ID); roles_to_add.append(role) if role else None
+        elif "ravenclaw" in house_name: role = guild.get_role(ROLE_RAVENCLAW_ID); roles_to_add.append(role) if role else None
+        elif "gryffindor" in house_name: role = guild.get_role(ROLE_GRYFFINDOR_ID); roles_to_add.append(role) if role else None
+        elif "slytherin" in house_name: role = guild.get_role(ROLE_SLYTHERIN_ID); roles_to_add.append(role) if role else None
 
         try:
             # 1. แจกยศและเปลี่ยนชื่อ
@@ -81,26 +117,26 @@ class StaffApprovalView(discord.ui.View):
             if role_guest in member.roles:
                 await member.remove_roles(role_guest)
 
-            # 3. ล็อคปุ่มทั้งหมดไม่ให้กดซ้ำได้อีก
+            # 3. ล็อคปุ่ม และอัปเดตหน้าตาใบสมัคร
             for child in self.children:
                 child.disabled = True
             
-            # 4. อัปเดตหน้าตาใบสมัคร
             embed.color = discord.Color.green()
             embed.title = "✅ อนุมัติเข้าชมรมเรียบร้อยแล้ว"
             embed.add_field(name="ผู้อนุมัติ", value=interaction.user.mention, inline=False)
             
-            await interaction.message.edit(embed=embed, view=self)
-            await interaction.response.send_message(f"✅ คุณได้อนุมัติให้ {member.mention} เข้าชมรมแล้ว!", ephemeral=True)
+            # ใช้ edit_message เพื่อให้บอทตอบสนองไวขึ้น แก้ปัญหาปุ่ม Error
+            await interaction.response.edit_message(embed=embed, view=self)
             
-            # (แถม) ส่ง DM แจ้งเตือนเมื่อผ่านการอนุมัติ
+            # 4. ส่ง DM 
             try:
-                await member.send(f"🎉 **ยินดีต้อนรับ!** ใบสมัครเข้าชมรมของคุณได้รับการอนุมัติโดย {interaction.user.mention} เรียบร้อยแล้วครับ สามารถเข้าไปพูดคุยในเซิร์ฟเวอร์ได้เลย!")
+                await member.send(f"🎉 **ยินดีต้อนรับ!** ใบสมัครของคุณได้รับการอนุมัติโดย {interaction.user.mention} เรียบร้อยแล้วครับ!")
             except discord.Forbidden:
-                pass # ถ้าผู้เล่นปิด DM ไว้ ให้ปล่อยผ่านไปไม่ต้องเออเร่อ
+                pass 
 
         except Exception as e:
-            await interaction.response.send_message(f"❌ เกิดข้อผิดพลาดของบอท: {e}", ephemeral=True)
+            # ถ้าเป็นเจ้าของเซิร์ฟเวอร์กดอนุมัติให้ตัวเอง บอทจะฟ้องบรรทัดนี้
+            await interaction.response.send_message(f"❌ เกิดข้อผิดพลาดของบอท: {e} (ห้ามทดสอบด้วยไอดีเจ้าของเซิร์ฟเวอร์นะครับ)", ephemeral=True)
 
     @discord.ui.button(label="❌ ปฏิเสธ", style=discord.ButtonStyle.danger, custom_id="staff_reject_btn")
     async def reject_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -109,35 +145,15 @@ class StaffApprovalView(discord.ui.View):
 
         embed = interaction.message.embeds[0]
         
-        # แกะข้อมูล ID ผู้สมัครออกมา (เพิ่มใหม่✨)
         user_mention = embed.fields[0].value
         user_id_match = re.search(r'\d+', user_mention)
         if not user_id_match:
             return await interaction.response.send_message("❌ เกิดข้อผิดพลาด: ดึงข้อมูล ID ไม่สำเร็จ", ephemeral=True)
         
         user_id = int(user_id_match.group())
-        guild = interaction.guild
-        member = guild.get_member(user_id)
         
-        # ล็อคปุ่ม
-        for child in self.children:
-            child.disabled = True
-            
-        # เปลี่ยนสีใบสมัครเป็นสีแดง
-        embed.color = discord.Color.red()
-        embed.title = "❌ ใบสมัครถูกปฏิเสธ"
-        embed.add_field(name="ผู้ปฏิเสธ", value=interaction.user.mention, inline=False)
-        
-        await interaction.message.edit(embed=embed, view=self)
-        await interaction.response.send_message("❌ บันทึกการปฏิเสธเรียบร้อยแล้ว", ephemeral=True)
-
-        # ส่งข้อความ DM ไปหาผู้สมัคร (เพิ่มใหม่✨)
-        if member:
-            try:
-                await member.send(f"❌ **แจ้งเตือนจากเซิร์ฟเวอร์:** ใบสมัครเข้าชมรมของคุณถูกปฏิเสธโดย {interaction.user.mention} ครับ\nหากมีข้อสงสัยหรือต้องการแก้ไขข้อมูล สามารถติดต่อสอบถามสตาฟฟ์ได้เลยครับ")
-            except discord.Forbidden:
-                pass # ถ้าผู้เล่นปิด DM ไว้ ให้ปล่อยผ่านไป
-
+        # เปิดหน้าต่างให้สตาฟฟ์กรอกเหตุผลแทน
+        await interaction.response.send_modal(RejectModal(user_id=user_id, original_message=interaction.message, view=self))
 
 # ==========================================
 # 📋 ระบบหน้าต่างฟอร์มที่นักเรียนต้องกรอก
