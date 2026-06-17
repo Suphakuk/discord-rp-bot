@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
-import os 
+import os
+import re 
 from keep_alive import keep_alive
 
 # ตั้งค่า Intents ให้บอทมีสิทธิ์จัดการสมาชิก
