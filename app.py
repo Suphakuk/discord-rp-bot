@@ -205,8 +205,8 @@ async def on_ready():
 @bot.command()
 async def setup(ctx):
     await ctx.send("**กรุณากดปุ่มด้านล่างเพื่อลงทะเบียนรับยศและเปลี่ยนชื่อ**", view=RegisterView())
-    await ctx.send(embed=embed)
 
+@bot.command()  # ⬅️ ใส่บรรทัดนี้เพิ่มกลับเข้ามาให้แล้วครับ
 async def houses(ctx):
     if not ctx.author.guild_permissions.manage_roles:
         return await ctx.send("❌ คุณไม่มีสิทธิ์ดูสมุดรายชื่อครับ")
