@@ -240,8 +240,8 @@ async def update_house_roster(guild):
         if role:
             members = [m.display_name for m in role.members]
             member_text = "\n".join(members) if members else "- ยังไม่มีสมาชิก -"
-            embed.add_field(name=f"{house_name} ({len(members)} คน)", value=f"```\n{member_text}\n
-```", inline=False)
+            # 📌 แก้ไขบรรทัดนี้ให้อยู่ติดกันแล้วครับ
+            embed.add_field(name=f"{house_name} ({len(members)} คน)", value=f"```\n{member_text}\n```", inline=False)
 
     # ค้นหาข้อความเก่าเพื่อแก้ไข
     async for message in roster_channel.history(limit=20):
@@ -252,16 +252,19 @@ async def update_house_roster(guild):
     # ถ้าหาไม่เจอ ให้ส่งใหม่
     await roster_channel.send(embed=embed)
 
+
 # 👁️ ระบบดักจับ: เปลี่ยนยศ / เปลี่ยนชื่อ
 @bot.event
 async def on_member_update(before, after):
     if before.roles != after.roles or before.nick != after.nick:
         await update_house_roster(after.guild)
 
+
 # 👁️ ระบบดักจับ: คนออกจากเซิร์ฟเวอร์
 @bot.event
 async def on_member_remove(member):
     await update_house_roster(member.guild)
+
 
 # 🚀 ตอนบอทออนไลน์
 @bot.event
@@ -274,9 +277,6 @@ async def on_ready():
     for guild in bot.guilds:
         await update_house_roster(guild)
 
-@bot.command()
-async def setup(ctx):
-    await ctx.send("**กรุณากดปุ่มด้านล่างเพื่อลงทะเบียนรับยศและเปลี่ยนชื่อ**", view=RegisterView())
 
 keep_alive()
 TOKEN = os.environ.get('DISCORD_TOKEN')
