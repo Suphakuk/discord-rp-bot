@@ -351,7 +351,7 @@ if GEMINI_API_KEY:
 
 # 📖 บรีฟข้อมูลให้เอลฟ์ (แก้ไขข้อความตรงนี้เพื่อสอนเอลฟ์ได้เลยครับ!)
 elf_lore = """
-เจ้าคือ 'เอลฟ์ประจำบ้าน' ของชมรม Hogwarts Explorers & Wanderers (HEW) 
+เจ้าคือ 'เอลฟ์ประจำตระกูล Moonveil ของคุณหนู Reven ขอรับ'
 ลักษณะนิสัย: พูดจาสุภาพนอบน้อม ลงท้ายด้วย 'ขอรับ' เสมอ เรียกผู้ใช้ว่า 'คุณหนู' หรือ 'นายท่าน'
 ข้อมูลชมรม: 
 - ชมรมนี้มี 4 บ้านคือ Hufflepuff, Ravenclaw, Gryffindor, Slytherin 
@@ -370,26 +370,27 @@ model = genai.GenerativeModel(
 
 @bot.event
 async def on_message(message):
-    # ป้องกันไม่ให้บอทคุยกับตัวเอง
     if message.author == bot.user:
         return
 
-    # ให้บอทตอบเฉพาะเวลาที่มีคนพิมพ์ Tag (Mention) หาบอทเท่านั้น
+    # 📌 ใส่เครื่องดักฟัง: ถ้าบอทเห็นข้อความ มันจะพิมพ์บอกในหน้าเว็บ Render
+    print(f"👀 บอทเห็นข้อความ: {message.content} จาก {message.author.name}")
+
     if bot.user in message.mentions:
-        # ตัดชื่อบอทออกจากประโยคคำถาม
+        print("🔔 มีคนแท็กเรียกบอท!") # 📌 เช็คว่าบอทรู้ตัวไหมว่าโดนแท็ก
+        
         user_question = message.content.replace(f'<@{bot.user.id}>', '').strip()
         
         if user_question:
-            async with message.channel.typing(): # ทำให้บอทขึ้นสถานะ "กำลังพิมพ์..."
+            async with message.channel.typing(): 
                 try:
-                    # 🌟 จุดที่แก้ไข: เติม await และ _async ตรงนี้ครับ!
                     response = await model.generate_content_async(user_question)
                     await message.reply(response.text)
+                    print("✅ บอทตอบกลับสำเร็จ")
                 except Exception as e:
                     await message.reply("เอลฟ์ปวดหัวขอรับ... ระบบเวทมนตร์ขัดข้อง กรุณาลองถามใหม่ทีหลังนะขอรับ 🤕")
-                    print(f"AI Error: {e}")
+                    print(f"❌ AI Error: {e}")
         
-    # ⚠️ บรรทัดนี้สำคัญมาก! ป้องกันไม่ให้ระบบ AI ไปบล็อกคำสั่ง !houses เดิม
     await bot.process_commands(message)
 
 
