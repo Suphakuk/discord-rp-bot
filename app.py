@@ -20,14 +20,63 @@ ROLE_GRYFFINDOR_ID = 1516502186778038272
 ROLE_SLYTHERIN_ID = 1516502299437043742
 
 
-# 📌 2. ใส่ ID ของห้องแชทที่จะให้บอทส่งประวัติลงสมุดทะเบียน
+# 📌 2. ใส่ ID ของห้องแชท
 LOG_CHANNEL_ID = 1516538668393824376 
-
-# 📌 ใส่ ID ห้องแชทที่จะให้บอทรายงานการเข้าเซิร์ฟเวอร์
 REPORT_CHANNEL_ID = 1517842688441974824
-
-# 📌 ใส่ ID ห้องแชทที่จะให้บอทวางสมุดรายชื่อแบบอัปเดตตลอดเวลา
 ROSTER_CHANNEL_ID = 1517848014255947796
+BOOKSHELF_FORUM_ID = 1516826085038362644
+
+# ==========================================
+# 📖 ระบบบรรณารักษ์ (เฝ้าชั้นหนังสือ Forum)
+# ==========================================
+@bot.event
+async def on_thread_create(thread):
+    # เช็คว่าโพสต์ที่ตั้งใหม่ อยู่ในห้อง Forum ชั้นหนังสือหรือไม่
+    if thread.parent_id == BOOKSHELF_FORUM_ID:
+        report_channel = thread.guild.get_channel(REPORT_CHANNEL_ID)
+        if report_channel:
+            embed = discord.Embed(
+                title="📚 มีการเพิ่มหนังสือเล่มใหม่เข้าชั้น",
+                description=f"**หัวข้อ:** {thread.mention}\n**ผู้เพิ่ม:** {thread.owner.mention if thread.owner else 'ไม่ทราบ'}",
+                color=discord.Color.green()
+            )
+            await report_channel.send(embed=embed)
+
+@bot.event
+async def on_thread_delete(thread):
+    if thread.parent_id == BOOKSHELF_FORUM_ID:
+        report_channel = thread.guild.get_channel(REPORT_CHANNEL_ID)
+        if report_channel:
+            embed = discord.Embed(
+                title="🔥 หนังสือถูกลบออกจากชั้น",
+                description=f"**หัวข้อที่ถูกลบ:** {thread.name}",
+                color=discord.Color.red()
+            )
+            await report_channel.send(embed=embed)
+
+@bot.event
+async def on_message_edit(before, after):
+    # เช็คว่าเป็นข้อความที่อยู่ใน Thread และอยู่ใน Forum ชั้นหนังสือหรือไม่
+    if not before.guild or not isinstance(before.channel, discord.Thread):
+        return
+    if before.channel.parent_id == BOOKSHELF_FORUM_ID:
+        # กรองเฉพาะกรณีที่มีการแก้ข้อความจริงๆ และคนแก้ไม่ใช่ตัวบอทเอง
+        if before.content != after.content and not before.author.bot:
+            report_channel = before.guild.get_channel(REPORT_CHANNEL_ID)
+            if report_channel:
+                embed = discord.Embed(
+                    title="✏️ มีการแก้ไขเนื้อหาในหนังสือ",
+                    description=f"**เล่มที่ถูกแก้ไข:** {before.channel.mention}\n**ผู้แก้ไข:** {before.author.mention}",
+                    color=discord.Color.orange()
+                )
+                
+                # ตัดคำเพื่อป้องกันกรณีข้อความยาวเกินลิมิตของ Discord
+                old_text = before.content[:1000] + "..." if len(before.content) > 1000 else before.content
+                new_text = after.content[:1000] + "..." if len(after.content) > 1000 else after.content
+                
+                embed.add_field(name="ข้อความเดิม", value=old_text or "ไม่มีข้อความ", inline=False)
+                embed.add_field(name="ข้อความใหม่", value=new_text or "ไม่มีข้อความ", inline=False)
+                await report_channel.send(embed=embed)
 
 @bot.event
 async def on_member_join(member):
