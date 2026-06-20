@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import os
 import re 
-import google.generativeai as genai # ⬅️ เพิ่มบรรทัดนี้เข้ามา
+import google.generativeai as genai 
 from keep_alive import keep_alive
 
 # ตั้งค่า Intents ให้บอทมีสิทธิ์จัดการสมาชิก
