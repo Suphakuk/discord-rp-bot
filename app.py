@@ -205,9 +205,9 @@ async def on_ready():
 @bot.command()
 async def setup(ctx):
     await ctx.send("**กรุณากดปุ่มด้านล่างเพื่อลงทะเบียนรับยศและเปลี่ยนชื่อ**", view=RegisterView())
+    await ctx.send(embed=embed)
 
 async def houses(ctx):
-    # ป้องกันไม่ให้คนทั่วไปใช้คำสั่งนี้
     if not ctx.author.guild_permissions.manage_roles:
         return await ctx.send("❌ คุณไม่มีสิทธิ์ดูสมุดรายชื่อครับ")
 
@@ -223,13 +223,12 @@ async def houses(ctx):
     for house_name, role_id in house_list:
         role = ctx.guild.get_role(role_id)
         if role:
-            # ดึงชื่อคนที่มียศนั้นๆ ออกมาลิสต์เป็นข้อความ
             members = [m.display_name for m in role.members]
             member_text = "\n".join(members) if members else "- ยังไม่มีสมาชิก -"
-            embed.add_field(name=f"{house_name} ({len(members)} คน)", value=f"```\n{member_text}\n
-```", inline=False)
+            embed.add_field(name=f"{house_name} ({len(members)} คน)", value=f"```\n{member_text}\n```", inline=False)
             
     await ctx.send(embed=embed)
+
 
 keep_alive()
 TOKEN = os.environ.get('DISCORD_TOKEN')
