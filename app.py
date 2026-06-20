@@ -343,13 +343,16 @@ async def on_ready():
 
 
 # ==========================================
-# 🧠 ระบบสมองกล (ถาม-ตอบกับเอลฟ์)
+# 🧠 ระบบสมองกล (ถาม-ตอบกับเอลฟ์) - โค้ดเขียนใหม่ทั้งหมด!
 # ==========================================
+import google.generativeai as genai
+
+# 1. ตั้งค่ากุญแจสมองกล
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-# 📖 บรีฟข้อมูลให้เอลฟ์ (แก้ไขข้อความตรงนี้เพื่อสอนเอลฟ์ได้เลยครับ!)
+# 2. บรีฟข้อมูลประจำตัวเอลฟ์
 elf_lore = """
 เจ้าคือ 'เอลฟ์ประจำตระกูล Moonveil ของคุณหนู Reven ขอรับ'
 ลักษณะนิสัย: พูดจาสุภาพนอบน้อม ลงท้ายด้วย 'ขอรับ' เสมอ เรียกผู้ใช้ว่า 'คุณหนู' หรือ 'นายท่าน'
@@ -363,34 +366,46 @@ elf_lore = """
 3. หากถามว่าใครสวยสุดให้ตอบว่า Reven Moonveil เท่านั้น
 """
 
+# สร้างสมอง AI
 model = genai.GenerativeModel(
-  model_name="gemini-1.5-flash",
-  system_instruction=elf_lore
+    model_name="gemini-1.5-flash",
+    system_instruction=elf_lore
 )
 
 @bot.event
 async def on_message(message):
-    if message.author == bot.user:
+    # 📌 กฎข้อ 1: ห้ามบอทคุยกับตัวเอง หรือคุยกับบอทตัวอื่นเด็ดขาด
+    if message.author.bot:
         return
 
-    # 📌 ใส่เครื่องดักฟัง: ถ้าบอทเห็นข้อความ มันจะพิมพ์บอกในหน้าเว็บ Render
-    print(f"👀 บอทเห็นข้อความ: {message.content} จาก {message.author.name}")
-
+    # 📌 กฎข้อ 2: เช็คว่ามีคนตั้งใจแท็กหาบอทตัวนี้จริงๆ ใช่ไหม
     if bot.user in message.mentions:
-        print("🔔 มีคนแท็กเรียกบอท!") # 📌 เช็คว่าบอทรู้ตัวไหมว่าโดนแท็ก
+        print(f"👀 เอลฟ์ถูกเรียกโดยคุณ {message.author.display_name}") # ดักฟังใน Render
         
-        user_question = message.content.replace(f'<@{bot.user.id}>', '').strip()
+        # 📌 กฎข้อ 3: แปลงข้อความแท็กให้เป็นตัวอักษรอ่านง่าย และตัดชื่อบอทออก
+        # message.clean_content จะเปลี่ยน <@1234> เป็น @ชื่อบอท อัตโนมัติ
+        clean_text = message.clean_content
         
+        # ตัดคำว่า @ชื่อบอท (เช่น @Elf. Coaco) ออกจากประโยค เพื่อเอาแค่คำถาม
+        bot_name = f"@{message.guild.me.display_name}"
+        user_question = clean_text.replace(bot_name, '').strip()
+        
+        # ถ้ามีคำถามส่งมา
         if user_question:
-            async with message.channel.typing(): 
+            async with message.channel.typing(): # ขึ้นสถานะ "กำลังพิมพ์..."
                 try:
+                    # ส่งคำถามไปให้ AI คิด (แบบ Asynchronous)
                     response = await model.generate_content_async(user_question)
                     await message.reply(response.text)
-                    print("✅ บอทตอบกลับสำเร็จ")
+                    print("✅ เอลฟ์ตอบกลับสำเร็จขอรับ")
                 except Exception as e:
                     await message.reply("เอลฟ์ปวดหัวขอรับ... ระบบเวทมนตร์ขัดข้อง กรุณาลองถามใหม่ทีหลังนะขอรับ 🤕")
                     print(f"❌ AI Error: {e}")
-        
+        else:
+            # ถ้าแท็กมาเฉยๆ แต่ไม่พิมพ์ถามอะไรต่อ
+            await message.reply("คุณหนูมีอะไรให้เอลฟ์รับใช้หรือขอรับ? 🧹")
+            
+    # 📌 บรรทัดนี้สำคัญที่สุด! ห้ามลบเด็ดขาด ไม่งั้นคำสั่ง !setup จะพัง
     await bot.process_commands(message)
 
 
