@@ -48,7 +48,7 @@ async def on_thread_delete(thread):
         report_channel = thread.guild.get_channel(REPORT_CHANNEL_ID)
         if report_channel:
             embed = discord.Embed(
-                title="🔥 หนังสือถูกลบออกจากชั้น",
+                title="📚 หนังสือถูกลบออกจากชั้น",
                 description=f"**หัวข้อที่ถูกลบ:** {thread.name}",
                 color=discord.Color.red()
             )
