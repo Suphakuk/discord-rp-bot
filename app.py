@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import os
 import re 
+import google.generativeai as genai # ⬅️ เพิ่มบรรทัดนี้เข้ามา
 from keep_alive import keep_alive
 
 # ตั้งค่า Intents ให้บอทมีสิทธิ์จัดการสมาชิก
@@ -339,6 +340,55 @@ async def on_ready():
     # สั่งให้อัปเดตกระดานรายชื่อทันทีที่บอทออนไลน์
     for guild in bot.guilds:
         await update_house_roster(guild)
+
+
+# ==========================================
+# 🧠 ระบบสมองกล (ถาม-ตอบกับเอลฟ์)
+# ==========================================
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
+# 📖 บรีฟข้อมูลให้เอลฟ์ (แก้ไขข้อความตรงนี้เพื่อสอนเอลฟ์ได้เลยครับ!)
+elf_lore = """
+เจ้าคือ 'เอลฟ์ประจำบ้าน' ของชมรม Hogwarts Explorers & Wanderers (HEW) 
+ลักษณะนิสัย: พูดจาสุภาพนอบน้อม ลงท้ายด้วย 'ขอรับ' เสมอ เรียกผู้ใช้ว่า 'คุณหนู' หรือ 'นายท่าน'
+ข้อมูลชมรม: 
+- ชมรมนี้มี 4 บ้านคือ Hufflepuff, Ravenclaw, Gryffindor, Slytherin 
+- มีระบบสมุดทะเบียนและกระดานรายชื่ออัตโนมัติ
+- สตาฟฟ์คือผู้ดูแลเซิร์ฟเวอร์
+กฎเหล็กของเอลฟ์: 
+1. หากมีคนถามคำถามที่นอกเหนือจากข้อมูลด้านบนนี้ หรือเจ้าไม่รู้คำตอบ ให้ตอบกลับไปสั้นๆ ว่า 'เอลฟ์ไม่ทราบจริงๆ ขอรับ คุณหนูลองไปสอบถามสตาฟฟ์ดูนะขอรับ' 
+2. ห้ามแต่งเรื่องหรือคิดข้อมูลขึ้นมาเองเด็ดขาด
+"""
+
+model = genai.GenerativeModel(
+  model_name="gemini-1.5-flash",
+  system_instruction=elf_lore
+)
+
+@bot.event
+async def on_message(message):
+    # ป้องกันไม่ให้บอทคุยกับตัวเอง
+    if message.author == bot.user:
+        return
+
+    # ให้บอทตอบเฉพาะเวลาที่มีคนพิมพ์ Tag (Mention) หาบอทเท่านั้น
+    if bot.user in message.mentions:
+        # ตัดชื่อบอทออกจากประโยคคำถาม
+        user_question = message.content.replace(f'<@{bot.user.id}>', '').strip()
+        
+        if user_question:
+            async with message.channel.typing(): # ทำให้บอทขึ้นสถานะ "กำลังพิมพ์..."
+                try:
+                    response = model.generate_content(user_question)
+                    await message.reply(response.text)
+                except Exception as e:
+                    await message.reply("เอลฟ์ปวดหัวขอรับ... ระบบเวทมนตร์ขัดข้อง กรุณาลองถามใหม่ทีหลังนะขอรับ 🤕")
+                    print(f"AI Error: {e}")
+        
+    # ⚠️ บรรทัดนี้สำคัญมาก! ป้องกันไม่ให้ระบบ AI ไปบล็อกคำสั่ง !houses เดิม
+    await bot.process_commands(message)
 
 
 keep_alive()
