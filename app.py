@@ -23,20 +23,6 @@ ROLE_SLYTHERIN_ID = 1516502299437043742
 # 📌 2. ใส่ ID ของห้องแชทที่จะให้บอทส่งประวัติลงสมุดทะเบียน
 LOG_CHANNEL_ID = 1516538668393824376  # ⬅️ เปลี่ยนเลขห้องตรงนี้
 
-# 📌 3. ใส่ ID ห้องแชทหลักที่จะให้เอลฟ์ส่งข้อความต้อนรับ (เมื่อมีคนเข้าเซิร์ฟเวอร์) ✨
-WELCOME_CHANNEL_ID = 1515761696101371956
-
-@bot.event
-async def on_member_join(member):
-    welcome_channel = bot.get_channel(WELCOME_CHANNEL_ID)
-    if welcome_channel:
-        welcome_msg = (
-            f"{member.display_avatar.url}\n\n"
-            f"**เรียนเชิญท่าน** {member.mention}\n\n"
-            f"**ยินดีต้อนรับ Hogwarts Explorers & Wanderers (HEW)!** ท่านได้เปิดสมุดบันทึกเล่มใหม่แล้ว "
-            f"หลังจากนี้ให้เราเป็นส่วนหนึ่งของการเติบโตของคุณหนูนะขอรับ"
-        )
-        await welcome_channel.send(welcome_msg)
 
 class RejectModal(discord.ui.Modal, title='ระบุเหตุผลที่ปฏิเสธ'):
     reason_input = discord.ui.TextInput(
