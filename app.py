@@ -47,9 +47,20 @@ async def on_thread_delete(thread):
     if thread.parent_id == BOOKSHELF_FORUM_ID:
         report_channel = thread.guild.get_channel(REPORT_CHANNEL_ID)
         if report_channel:
+            deleter = "ไม่ทราบตัวผู้ลบ"
+            
+            # ให้บอทค้นหาประวัติการทำงาน (Audit Logs) 5 รายการล่าสุด
+            try:
+                async for entry in thread.guild.audit_logs(limit=5, action=discord.AuditLogAction.thread_delete):
+                    if entry.target.id == thread.id:
+                        deleter = entry.user.mention
+                        break
+            except discord.Forbidden:
+                deleter = "ไม่ทราบ (บอทไม่มีสิทธิ์ดู Audit Log)"
+
             embed = discord.Embed(
-                title="📚 หนังสือถูกลบออกจากชั้น",
-                description=f"**หัวข้อที่ถูกลบ:** {thread.name}",
+                title="📔 หนังสือถูกลบออกจากชั้น",
+                description=f"**หัวข้อที่ถูกลบ:** {thread.name}\n**ผู้ลบ:** {deleter}",
                 color=discord.Color.red()
             )
             await report_channel.send(embed=embed)
