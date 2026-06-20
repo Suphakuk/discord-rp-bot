@@ -215,12 +215,6 @@ class RegisterView(discord.ui.View):
     async def register_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(RegisterModal())
 
-@bot.event
-async def on_ready():
-    bot.add_view(RegisterView())
-    bot.add_view(StaffApprovalView())
-    print(f'✅ บอทตื่นแล้ว! ล็อกอินในชื่อ {bot.user}')
-
 @bot.command()
 async def setup(ctx):
     await ctx.send("**กรุณากดปุ่มด้านล่างเพื่อลงทะเบียนรับยศและเปลี่ยนชื่อ**", view=RegisterView())
@@ -249,26 +243,40 @@ async def update_house_roster(guild):
             embed.add_field(name=f"{house_name} ({len(members)} คน)", value=f"```\n{member_text}\n
 ```", inline=False)
 
-    # ค้นหาว่าบอทเคยส่งข้อความรายชื่อไว้หรือยัง
+    # ค้นหาข้อความเก่าเพื่อแก้ไข
     async for message in roster_channel.history(limit=20):
         if message.author == bot.user and message.embeds and "สมุดรายชื่อ" in message.embeds[0].title:
-            await message.edit(embed=embed) # เจอข้อความเก่า -> ให้กดแก้ไข
+            await message.edit(embed=embed)
             return
     
-    # ถ้าหาข้อความเก่าไม่เจอ -> ให้ส่งข้อความใหม่
+    # ถ้าหาไม่เจอ ให้ส่งใหม่
     await roster_channel.send(embed=embed)
 
-# 👁️ ระบบดักจับการเปลี่ยนแปลง: ถ้ามีการเปลี่ยนยศ หรือเปลี่ยนชื่อ ให้อัปเดตรายชื่อ
+# 👁️ ระบบดักจับ: เปลี่ยนยศ / เปลี่ยนชื่อ
 @bot.event
 async def on_member_update(before, after):
     if before.roles != after.roles or before.nick != after.nick:
         await update_house_roster(after.guild)
 
-# 👁️ ระบบดักจับ: ถ้ามีคนออกจากเซิร์ฟเวอร์ ให้อัปเดตรายชื่อ
+# 👁️ ระบบดักจับ: คนออกจากเซิร์ฟเวอร์
 @bot.event
 async def on_member_remove(member):
     await update_house_roster(member.guild)
 
+# 🚀 ตอนบอทออนไลน์
+@bot.event
+async def on_ready():
+    bot.add_view(RegisterView())
+    bot.add_view(StaffApprovalView())
+    print(f'✅ บอทตื่นแล้ว! ล็อกอินในชื่อ {bot.user}')
+    
+    # สั่งให้อัปเดตกระดานรายชื่อทันทีที่บอทออนไลน์
+    for guild in bot.guilds:
+        await update_house_roster(guild)
+
+@bot.command()
+async def setup(ctx):
+    await ctx.send("**กรุณากดปุ่มด้านล่างเพื่อลงทะเบียนรับยศและเปลี่ยนชื่อ**", view=RegisterView())
 
 keep_alive()
 TOKEN = os.environ.get('DISCORD_TOKEN')
