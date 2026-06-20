@@ -26,6 +26,8 @@ LOG_CHANNEL_ID = 1516538668393824376
 # 📌 ใส่ ID ห้องแชทที่จะให้บอทรายงานการเข้าเซิร์ฟเวอร์
 REPORT_CHANNEL_ID = 1517842688441974824
 
+# 📌 ใส่ ID ห้องแชทที่จะให้บอทวางสมุดรายชื่อแบบอัปเดตตลอดเวลา
+ROSTER_CHANNEL_ID = 1517848014255947796
 
 @bot.event
 async def on_member_join(member):
@@ -223,12 +225,14 @@ async def on_ready():
 async def setup(ctx):
     await ctx.send("**กรุณากดปุ่มด้านล่างเพื่อลงทะเบียนรับยศและเปลี่ยนชื่อ**", view=RegisterView())
 
-@bot.command()  # ⬅️ ใส่บรรทัดนี้เพิ่มกลับเข้ามาให้แล้วครับ
-async def houses(ctx):
-    if not ctx.author.guild_permissions.manage_roles:
-        return await ctx.send("❌ คุณไม่มีสิทธิ์ดูสมุดรายชื่อครับ")
+# ==========================================
+# 📜 ระบบอัปเดตกระดานรายชื่ออัตโนมัติ (Live Dashboard)
+# ==========================================
+async def update_house_roster(guild):
+    roster_channel = guild.get_channel(ROSTER_CHANNEL_ID)
+    if not roster_channel: return
 
-    embed = discord.Embed(title="📜 สมุดรายชื่อนักเรียนแยกตามบ้าน", color=discord.Color.gold())
+    embed = discord.Embed(title="📜 สมุดรายชื่อนักเรียนแยกตามบ้าน (Live Update)", color=discord.Color.gold())
     
     house_list = [
         ("🦡 Hufflepuff", ROLE_HUFFLEPUFF_ID),
@@ -238,13 +242,32 @@ async def houses(ctx):
     ]
     
     for house_name, role_id in house_list:
-        role = ctx.guild.get_role(role_id)
+        role = guild.get_role(role_id)
         if role:
             members = [m.display_name for m in role.members]
             member_text = "\n".join(members) if members else "- ยังไม่มีสมาชิก -"
-            embed.add_field(name=f"{house_name} ({len(members)} คน)", value=f"```\n{member_text}\n```", inline=False)
-            
-    await ctx.send(embed=embed)
+            embed.add_field(name=f"{house_name} ({len(members)} คน)", value=f"```\n{member_text}\n
+```", inline=False)
+
+    # ค้นหาว่าบอทเคยส่งข้อความรายชื่อไว้หรือยัง
+    async for message in roster_channel.history(limit=20):
+        if message.author == bot.user and message.embeds and "สมุดรายชื่อ" in message.embeds[0].title:
+            await message.edit(embed=embed) # เจอข้อความเก่า -> ให้กดแก้ไข
+            return
+    
+    # ถ้าหาข้อความเก่าไม่เจอ -> ให้ส่งข้อความใหม่
+    await roster_channel.send(embed=embed)
+
+# 👁️ ระบบดักจับการเปลี่ยนแปลง: ถ้ามีการเปลี่ยนยศ หรือเปลี่ยนชื่อ ให้อัปเดตรายชื่อ
+@bot.event
+async def on_member_update(before, after):
+    if before.roles != after.roles or before.nick != after.nick:
+        await update_house_roster(after.guild)
+
+# 👁️ ระบบดักจับ: ถ้ามีคนออกจากเซิร์ฟเวอร์ ให้อัปเดตรายชื่อ
+@bot.event
+async def on_member_remove(member):
+    await update_house_roster(member.guild)
 
 
 keep_alive()
