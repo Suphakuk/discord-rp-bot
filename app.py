@@ -380,15 +380,16 @@ async def on_message(message):
         user_question = message.content.replace(f'<@{bot.user.id}>', '').strip()
         
         if user_question:
-            async with message.channel.typing(): # ทำให้บอทขึ้นสถานะ "กำลังพิมพ์..."
+            async with message.channel.typing(): 
                 try:
-                    response = model.generate_content(user_question)
+                    # 🌟 จุดที่แก้ไข: เปลี่ยนมาใช้คำสั่งแบบคู่ขนาน (เติม await และ _async)
+                    response = await model.generate_content_async(user_question)
                     await message.reply(response.text)
                 except Exception as e:
                     await message.reply("เอลฟ์ปวดหัวขอรับ... ระบบเวทมนตร์ขัดข้อง กรุณาลองถามใหม่ทีหลังนะขอรับ 🤕")
                     print(f"AI Error: {e}")
         
-    # ⚠️ บรรทัดนี้สำคัญมาก! ป้องกันไม่ให้ระบบ AI ไปบล็อกคำสั่ง !houses เดิม
+    # ⚠️ บรรทัดนี้สำคัญมาก! ป้องกันไม่ให้ระบบ AI ไปบล็อกคำสั่งอื่นๆ
     await bot.process_commands(message)
 
 
