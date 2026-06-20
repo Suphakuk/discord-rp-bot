@@ -78,6 +78,9 @@ async def on_message_edit(before, after):
                 embed.add_field(name="ข้อความใหม่", value=new_text or "ไม่มีข้อความ", inline=False)
                 await report_channel.send(embed=embed)
 
+# ==========================================
+# 🚪 ระบบต้อนรับ แจกยศ และรายงานคนเข้าเซิร์ฟเวอร์
+# ==========================================
 @bot.event
 async def on_member_join(member):
     # ดึงยศ GUEST และห้องรายงานผล จากเซิร์ฟเวอร์
