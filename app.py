@@ -367,10 +367,16 @@ elf_lore = """
 """
 
 # สร้างสมอง AI
-model = genai.GenerativeModel(
-    model_name="gemini-3.5-flash",
-    system_instruction=elf_lore
-)
+model = None
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel(
+        model_name="gemini-2.5-flash",
+        system_instruction=elf_lore
+    )
 
 @bot.event
 async def on_message(message):
