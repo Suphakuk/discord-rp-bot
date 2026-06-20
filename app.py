@@ -21,7 +21,38 @@ ROLE_SLYTHERIN_ID = 1516502299437043742
 
 
 # 📌 2. ใส่ ID ของห้องแชทที่จะให้บอทส่งประวัติลงสมุดทะเบียน
-LOG_CHANNEL_ID = 1516538668393824376  # ⬅️ เปลี่ยนเลขห้องตรงนี้
+LOG_CHANNEL_ID = 1516538668393824376 
+
+# 📌 ใส่ ID ห้องแชทที่จะให้บอทรายงานการเข้าเซิร์ฟเวอร์
+REPORT_CHANNEL_ID = 1517842688441974824
+
+
+@bot.event
+async def on_member_join(member):
+    # ดึงยศ GUEST และห้องรายงานผล จากเซิร์ฟเวอร์
+    role_guest = member.guild.get_role(ROLE_GUEST_ID)
+    report_channel = member.guild.get_channel(REPORT_CHANNEL_ID)
+    
+    if role_guest:
+        try:
+            # 1. แจกยศ Guest
+            await member.add_roles(role_guest)
+            
+            # 2. ส่งรายงานไปที่ห้องแชท
+            if report_channel:
+                embed = discord.Embed(
+                    title="📥 มีคนเข้าเซิร์ฟเวอร์ใหม่", 
+                    description=f"ผู้ใช้ {member.mention} ได้เข้าสู่เซิร์ฟเวอร์และได้รับยศ <@&{ROLE_GUEST_ID}> อัตโนมัติแล้วครับ!",
+                    color=discord.Color.blue()
+                )
+                embed.set_thumbnail(url=member.display_avatar.url)
+                await report_channel.send(embed=embed)
+                
+        except discord.Forbidden:
+            if report_channel:
+                await report_channel.send(f"❌ **แจ้งเตือนสตาฟฟ์:** มีผู้ใช้ {member.mention} เข้ามาใหม่ แต่บอทแจกยศให้ไม่ได้ (สิทธิ์ของบอทอาจจะอยู่ต่ำกว่ายศ Guest)")
+        except Exception as e:
+            print(f"❌ เกิดข้อผิดพลาด: {e}")
 
 
 class RejectModal(discord.ui.Modal, title='ระบุเหตุผลที่ปฏิเสธ'):
