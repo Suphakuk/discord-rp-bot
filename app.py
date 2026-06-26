@@ -418,6 +418,16 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
+import time
+
 keep_alive()
 TOKEN = os.environ.get('DISCORD_TOKEN')
-bot.run(TOKEN)
+
+try:
+    bot.run(TOKEN)
+except Exception as e:
+    if "429" in str(e):
+        print("🛑 (429 Rate Limit)! เอลฟ์จะขอกลับไปทำงานที่ตระกูลก่อนนะขอรับ...")
+        time.sleep(75) # สั่งหน่วงเวลาเกิน 65 วินาที เพื่อหลอกดิสคอร์ดให้คูลดาวน์และปลดแบน
+    else:
+        raise e
